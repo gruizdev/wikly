@@ -8,6 +8,12 @@ interface ObjectiveCardProps {
 }
 
 export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelete }: ObjectiveCardProps) => {
+  const handleDelete = () => {
+    if (window.confirm(`Delete "${objective.title}"?\n\nThis action cannot be undone.`)) {
+      onDelete(objective.id)
+    }
+  }
+
   return (
     <div
       className={`p-5 sm:p-6 rounded-2xl shadow-lg transition-all duration-300 ${
@@ -50,7 +56,7 @@ export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelet
         </div>
 
         <button
-          onClick={() => onDelete(objective.id)}
+          onClick={handleDelete}
           className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-gray-200 bg-white text-gray-500 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors text-xl focus:outline-none focus:ring-2 focus:ring-red-200"
           aria-label="Delete objective"
         >

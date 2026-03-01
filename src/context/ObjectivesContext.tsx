@@ -93,6 +93,7 @@ const createMockObjectives = (): Objective[] => {
 interface ObjectivesContextType {
   objectives: Objective[]
   addObjective: (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => void
+  editObjective: (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => void
   completeObjectiveToday: (id: string) => void
   deleteObjective: (id: string) => void
   resetToMockData: () => void
@@ -132,6 +133,16 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
     setObjectives([...objectives, newObjective])
   }
 
+  const editObjective = (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
+    setObjectives((prev) =>
+      prev.map((obj) =>
+        obj.id === id
+          ? { ...obj, title: updates.title, icon: updates.icon, frequency: updates.frequency }
+          : obj
+      )
+    )
+  }
+
   const completeObjectiveToday = (id: string) => {
     setObjectives((prev) =>
       prev.map((obj) => {
@@ -158,7 +169,7 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <ObjectivesContext.Provider value={{ objectives, addObjective, completeObjectiveToday, deleteObjective, resetToMockData }}>
+    <ObjectivesContext.Provider value={{ objectives, addObjective, editObjective, completeObjectiveToday, deleteObjective, resetToMockData }}>
       {children}
     </ObjectivesContext.Provider>
   )

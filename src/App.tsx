@@ -3,6 +3,7 @@ import { ObjectivesProvider } from './context/ObjectivesContext'
 import Home from './pages/Home'
 import CreateObjective from './pages/CreateObjective'
 import CalendarOverview from './pages/CalendarOverview'
+import ManageObjectives from './pages/ManageObjectives'
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/create" element={<CreateObjective />} />
+          <Route path="/manage" element={<ManageObjectives />} />
           <Route path="/calendar" element={<CalendarOverview />} />
         </Routes>
       </ObjectivesProvider>

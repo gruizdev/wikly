@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useObjectives } from '../context/ObjectivesContext'
+import { BottomNav } from '../components/BottomNav'
 
 interface PeriodProgress {
   label: string
@@ -13,7 +13,6 @@ const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 const toDate = (dateString: string) => new Date(`${dateString}T00:00:00`)
 
 export default function CalendarOverview() {
-  const navigate = useNavigate()
   const { objectives } = useObjectives()
   const currentYear = new Date().getFullYear()
 
@@ -89,19 +88,10 @@ export default function CalendarOverview() {
   }, [objectives, currentYear])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 px-4 py-5 sm:px-6 sm:py-8 md:px-8">
-      <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl space-y-6 sm:space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 px-4 py-5 sm:px-6 sm:py-8 md:px-8 pb-32">
+      <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl space-y-6 sm:space-y-8 mb-8">
         <div className="bg-gradient-to-r from-purple-500 via-accent-500 to-pink-500 text-white rounded-3xl shadow-xl p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <button
-              onClick={() => navigate('/')}
-              className="bg-white/20 text-white border-2 border-white/70 rounded-xl px-3 py-2 text-sm font-bold hover:bg-white/30 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/80"
-              aria-label="Back to objectives"
-            >
-              ← Back
-            </button>
-            <h1 className="text-xl sm:text-2xl font-black">{currentYear} Calendar</h1>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-black mb-2">📅 {currentYear} Calendar</h1>
           <p className="text-sm sm:text-base font-semibold text-white/95">
             See completion by month and week for the current year.
           </p>
@@ -155,6 +145,8 @@ export default function CalendarOverview() {
           </div>
         </section>
       </div>
+
+      <BottomNav />
     </div>
   )
 }
