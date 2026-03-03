@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useObjectives } from '../context/ObjectivesContext'
 import { Objective, FrequencyType } from '../types'
 import { BottomNav } from '../components/BottomNav'
-
-const EMOJI_ICONS = ['📚', '💪', '🎨', '🎵', '🏃', '📖', '🧘', '💻', '🌍', '❤️', '⚡', '🎯', '🌿']
+import { DEFAULT_OBJECTIVE_COLOR, FREQUENCY_LABELS, FREQUENCY_OPTIONS, OBJECTIVE_COLOR_OPTIONS } from '../constants/objectiveMeta'
+import { EmojiPickerModal } from '../components/EmojiPickerModal'
 
 export default function ManageObjectives() {
   const { objectives, editObjective, deleteObjective } = useObjectives()
@@ -12,7 +12,8 @@ export default function ManageObjectives() {
     title: string
     icon: string
     frequency: FrequencyType
-  }>({ title: '', icon: '📚', frequency: 'weekly' })
+    color: Objective['color']
+  }>({ title: '', icon: '📚', frequency: 'weekly', color: DEFAULT_OBJECTIVE_COLOR })
   const [showIconPicker, setShowIconPicker] = useState(false)
 
   const handleStartEdit = (objective: Objective) => {
@@ -21,6 +22,7 @@ export default function ManageObjectives() {
       title: objective.title,
       icon: objective.icon || '📚',
       frequency: objective.frequency,
+      color: objective.color || DEFAULT_OBJECTIVE_COLOR,
     })
     setShowIconPicker(false)
   }
@@ -64,10 +66,13 @@ export default function ManageObjectives() {
               <p className="text-gray-600">Create one to get started</p>
             </div>
           ) : (
-            objectives.map((objective) => (
+            objectives.map((objective) => {
+              const selectedColor = OBJECTIVE_COLOR_OPTIONS.find((option) => option.value === objective.color) || OBJECTIVE_COLOR_OPTIONS.find((option) => option.value === DEFAULT_OBJECTIVE_COLOR)!
+
+              return (
               <div
                 key={objective.id}
-                className="bg-white rounded-3xl shadow-xl p-5 sm:p-6"
+                className={`rounded-3xl border-2 shadow-xl p-5 sm:p-6 ${selectedColor.cardClass} ${selectedColor.borderClass}`}
               >
                 {editingId === objective.id ? (
                   <div className="space-y-5">
@@ -99,25 +104,10 @@ export default function ManageObjectives() {
                         </button>
 
                         {showIconPicker && (
-                          <div className="absolute top-full left-0 right-0 mt-3 bg-white border-2 border-purple-300 rounded-xl shadow-xl p-4 grid grid-cols-6 gap-3 z-50">
-                            {EMOJI_ICONS.map((emoji) => (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => {
-                                  setEditForm({ ...editForm, icon: emoji })
-                                  setShowIconPicker(false)
-                                }}
-                                className={`text-3xl p-2 rounded-lg border-2 transition-all focus:outline-none ${
-                                  editForm.icon === emoji
-                                    ? 'bg-purple-200 border-purple-400 scale-110'
-                                    : 'bg-white border-transparent hover:bg-purple-100'
-                                }`}
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
+                          <EmojiPickerModal
+                            onSelectEmoji={(emoji) => setEditForm({ ...editForm, icon: emoji })}
+                            onClose={() => setShowIconPicker(false)}
+                          />
                         )}
                       </div>
                     </div>
@@ -126,8 +116,8 @@ export default function ManageObjectives() {
                       <label className="block text-sm font-semibold text-gray-700 mb-4">
                         Frequency *
                       </label>
-                      <div className="grid grid-cols-3 gap-4">
-                        {(['weekly', 'monthly', 'yearly'] as const).map((freq) => (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {FREQUENCY_OPTIONS.map((freq) => (
                           <button
                             key={freq}
                             type="button"
@@ -140,6 +130,28 @@ export default function ManageObjectives() {
                           >
                             {freq.charAt(0).toUpperCase() + freq.slice(1)}
                           </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-4">
+                        Card Color *
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                        {OBJECTIVE_COLOR_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setEditForm({ ...editForm, color: option.value })}
+                            className={`h-12 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-purple-200 ${option.swatchClass} ${
+                              editForm.color === option.value
+                                ? 'border-gray-700 scale-105'
+                                : 'border-transparent hover:border-gray-400'
+                            }`}
+                            aria-label={`Select ${option.label}`}
+                            title={option.label}
+                          />
                         ))}
                       </div>
                     </div>
@@ -166,9 +178,7 @@ export default function ManageObjectives() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-lg text-gray-800 truncate">{objective.title}</h3>
                       <p className="text-xs text-gray-600 mt-1">
-                        {objective.frequency === 'weekly' && '📅 Weekly'}
-                        {objective.frequency === 'monthly' && '📆 Monthly'}
-                        {objective.frequency === 'yearly' && '🗓️ Yearly'}
+                        {FREQUENCY_LABELS[objective.frequency]}
                       </p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
@@ -188,7 +198,8 @@ export default function ManageObjectives() {
                   </div>
                 )}
               </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>

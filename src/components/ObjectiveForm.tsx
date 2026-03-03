@@ -2,22 +2,23 @@ import { useState, useRef, useEffect } from 'react'
 import { useObjectives } from '../context/ObjectivesContext'
 import { FrequencyType } from '../types'
 import { useNavigate } from 'react-router-dom'
-
-const EMOJI_ICONS = ['📚', '💪', '🎨', '🎵', '🏃', '📖', '🧘', '💻', '🌍', '❤️', '⚡', '🎯']
+import { DEFAULT_OBJECTIVE_COLOR, FREQUENCY_OPTIONS, OBJECTIVE_COLOR_OPTIONS } from '../constants/objectiveMeta'
+import { EmojiPickerModal } from './EmojiPickerModal'
 
 export const ObjectiveForm = () => {
   const [title, setTitle] = useState('')
   const [selectedIcon, setSelectedIcon] = useState('📚')
   const [frequency, setFrequency] = useState<FrequencyType>('weekly')
+  const [color, setColor] = useState(DEFAULT_OBJECTIVE_COLOR)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { addObjective } = useObjectives()
   const navigate = useNavigate()
-  const emojiPickerRef = useRef<HTMLDivElement>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
 
-  // Close emoji picker when clicking outside
+  // Close icon picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setShowEmojiPicker(false)
       }
     }
@@ -35,6 +36,7 @@ export const ObjectiveForm = () => {
         title: title.trim(),
         icon: selectedIcon,
         frequency,
+        color,
       })
       navigate('/')
     }
@@ -62,7 +64,7 @@ export const ObjectiveForm = () => {
         <label className="block text-sm font-semibold text-gray-700 mb-3">
           Choose an Icon (Optional)
         </label>
-        <div className="relative" ref={emojiPickerRef}>
+        <div className="relative" ref={pickerRef}>
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -73,25 +75,10 @@ export const ObjectiveForm = () => {
           </button>
 
           {showEmojiPicker && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-white border-2 border-purple-300 rounded-xl shadow-xl p-4 grid grid-cols-6 gap-3 z-50">
-              {EMOJI_ICONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => {
-                    setSelectedIcon(emoji)
-                    setShowEmojiPicker(false)
-                  }}
-                  className={`text-3xl p-2 rounded-lg border-2 transition-all focus:outline-none focus:ring-2 focus:ring-purple-200 ${
-                    selectedIcon === emoji
-                      ? 'bg-purple-200 border-purple-400 scale-110'
-                      : 'bg-white border-transparent hover:bg-purple-100'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <EmojiPickerModal
+              onSelectEmoji={setSelectedIcon}
+              onClose={() => setShowEmojiPicker(false)}
+            />
           )}
         </div>
       </div>
@@ -101,8 +88,8 @@ export const ObjectiveForm = () => {
         <label className="block text-sm font-semibold text-gray-700 mb-4">
           How often? *
         </label>
-        <div className="grid grid-cols-3 gap-4">
-          {(['weekly', 'monthly', 'yearly'] as const).map((freq) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {FREQUENCY_OPTIONS.map((freq) => (
             <button
               key={freq}
               type="button"
@@ -115,6 +102,29 @@ export const ObjectiveForm = () => {
             >
               {freq.charAt(0).toUpperCase() + freq.slice(1)}
             </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Color Selector */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-4">
+          Card Color *
+        </label>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {OBJECTIVE_COLOR_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setColor(option.value)}
+              className={`h-12 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-purple-200 ${option.swatchClass} ${
+                color === option.value
+                  ? 'border-gray-700 scale-105'
+                  : 'border-transparent hover:border-gray-400'
+              }`}
+              aria-label={`Select ${option.label}`}
+              title={option.label}
+            />
           ))}
         </div>
       </div>

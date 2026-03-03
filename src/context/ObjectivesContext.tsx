@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Objective } from '../types'
+import { DEFAULT_OBJECTIVE_COLOR } from '../constants/objectiveMeta'
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
@@ -43,7 +44,8 @@ const createMockObjectives = (): Objective[] => {
       id: 'mock-1',
       title: 'Morning workout',
       icon: '💪',
-      frequency: 'weekly',
+      frequency: 'daily',
+      color: 'green',
       createdAt: new Date(),
       completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(0), daysAgo(2), daysAgo(5)),
     },
@@ -52,6 +54,7 @@ const createMockObjectives = (): Objective[] => {
       title: 'Read 20 pages',
       icon: '📚',
       frequency: 'weekly',
+      color: 'purple',
       createdAt: new Date(),
       completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(1), daysAgo(3)),
     },
@@ -60,6 +63,7 @@ const createMockObjectives = (): Objective[] => {
       title: 'Practice guitar',
       icon: '🎵',
       frequency: 'weekly',
+      color: 'pink',
       createdAt: new Date(),
       completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(0)),
     },
@@ -68,6 +72,7 @@ const createMockObjectives = (): Objective[] => {
       title: 'Build side-project feature',
       icon: '💻',
       frequency: 'monthly',
+      color: 'blue',
       createdAt: new Date(),
       completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(4), daysAgo(12)),
     },
@@ -76,6 +81,7 @@ const createMockObjectives = (): Objective[] => {
       title: 'Weekend nature walk',
       icon: '🌿',
       frequency: 'monthly',
+      color: 'orange',
       createdAt: new Date(),
       completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(6)),
     },
@@ -84,17 +90,27 @@ const createMockObjectives = (): Objective[] => {
       title: 'Annual vision board',
       icon: '🎯',
       frequency: 'yearly',
+      color: 'yellow',
       createdAt: new Date(),
       completedDates: uniqueDates(sharedWeekDate, sharedMonthDate),
     },
   ]
 }
 
+const normalizeObjective = (objective: any): Objective => ({
+  ...objective,
+  icon: objective.icon || '📋',
+  color: objective.color || DEFAULT_OBJECTIVE_COLOR,
+  createdAt: objective.createdAt ? new Date(objective.createdAt) : new Date(),
+  completedDates: Array.isArray(objective.completedDates) ? objective.completedDates : [],
+})
+
 interface ObjectivesContextType {
   objectives: Objective[]
   addObjective: (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => void
   editObjective: (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => void
   completeObjectiveToday: (id: string) => void
+  reorderObjectives: (fromIndex: number, toIndex: number) => void
   deleteObjective: (id: string) => void
   resetToMockData: () => void
 }
@@ -109,7 +125,8 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
     const stored = localStorage.getItem('objectives')
     if (stored) {
       try {
-        setObjectives(JSON.parse(stored))
+        const parsed = JSON.parse(stored)
+        setObjectives(Array.isArray(parsed) ? parsed.map(normalizeObjective) : [])
       } catch {
         console.error('Failed to parse objectives from localStorage')
       }
@@ -137,10 +154,29 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
     setObjectives((prev) =>
       prev.map((obj) =>
         obj.id === id
-          ? { ...obj, title: updates.title, icon: updates.icon, frequency: updates.frequency }
+          ? { ...obj, title: updates.title, icon: updates.icon, frequency: updates.frequency, color: updates.color }
           : obj
       )
     )
+  }
+
+  const reorderObjectives = (fromIndex: number, toIndex: number) => {
+    setObjectives((prev) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= prev.length ||
+        toIndex >= prev.length
+      ) {
+        return prev
+      }
+
+      const reordered = [...prev]
+      const [movedObjective] = reordered.splice(fromIndex, 1)
+      reordered.splice(toIndex, 0, movedObjective)
+      return reordered
+    })
   }
 
   const completeObjectiveToday = (id: string) => {
@@ -169,7 +205,7 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <ObjectivesContext.Provider value={{ objectives, addObjective, editObjective, completeObjectiveToday, deleteObjective, resetToMockData }}>
+    <ObjectivesContext.Provider value={{ objectives, addObjective, editObjective, completeObjectiveToday, reorderObjectives, deleteObjective, resetToMockData }}>
       {children}
     </ObjectivesContext.Provider>
   )

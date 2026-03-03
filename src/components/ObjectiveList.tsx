@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { useObjectives } from '../context/ObjectivesContext'
 import { ObjectiveCard } from './ObjectiveCard'
 
 export const ObjectiveList = () => {
-  const { objectives, completeObjectiveToday, deleteObjective } = useObjectives()
+  const { objectives, completeObjectiveToday, deleteObjective, reorderObjectives } = useObjectives()
   const today = new Date().toISOString().split('T')[0]
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   if (objectives.length === 0) {
     return (
@@ -15,26 +18,38 @@ export const ObjectiveList = () => {
     )
   }
 
-  // Sort by completed today first, then by frequency
-  const sortedObjectives = [...objectives].sort((a, b) => {
-    const aCompleted = a.completedDates.includes(today)
-    const bCompleted = b.completedDates.includes(today)
-    if (aCompleted !== bCompleted) return aCompleted ? 1 : -1
-    
-    const frequencyOrder = { weekly: 0, monthly: 1, yearly: 2 }
-    return frequencyOrder[a.frequency] - frequencyOrder[b.frequency]
-  })
-
   return (
     <div className="space-y-4 sm:space-y-5">
-      {sortedObjectives.map((objective) => (
-        <ObjectiveCard
+      {objectives.map((objective, index) => (
+        <div
           key={objective.id}
-          objective={objective}
-          isCompletedToday={objective.completedDates.includes(today)}
-          onComplete={completeObjectiveToday}
-          onDelete={deleteObjective}
-        />
+          draggable
+          onDragStart={() => setDraggedIndex(index)}
+          onDragOver={(event) => {
+            event.preventDefault()
+            setDragOverIndex(index)
+          }}
+          onDragLeave={() => setDragOverIndex((current) => (current === index ? null : current))}
+          onDrop={() => {
+            if (draggedIndex !== null) {
+              reorderObjectives(draggedIndex, index)
+            }
+            setDraggedIndex(null)
+            setDragOverIndex(null)
+          }}
+          onDragEnd={() => {
+            setDraggedIndex(null)
+            setDragOverIndex(null)
+          }}
+          className={`rounded-2xl transition-all ${dragOverIndex === index ? 'ring-2 ring-purple-400' : ''}`}
+        >
+          <ObjectiveCard
+            objective={objective}
+            isCompletedToday={objective.completedDates.includes(today)}
+            onComplete={completeObjectiveToday}
+            onDelete={deleteObjective}
+          />
+        </div>
       ))}
     </div>
   )

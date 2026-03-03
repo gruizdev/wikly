@@ -1,6 +1,6 @@
 # Objectives App
 
-A colorful, mobile-optimized React app to define and track weekly, monthly, and yearly objectives.
+A colorful, mobile-optimized React app to define and track daily, weekly, monthly, and yearly objectives.
 
 ## Getting Started
 
@@ -24,7 +24,9 @@ npm run dev
 
 ## Features
 
-✨ **Create Objectives** - Add objectives with optional emoji icons and frequency (weekly, monthly, yearly)
+✨ **Create Objectives** - Add objectives with optional emoji icons, color selection, and frequency (daily, weekly, monthly, yearly)
+
+↕️ **Drag to Reorder** - Reorder objectives directly on the home screen using drag and drop
 
 📊 **Track Progress** - Mark objectives as complete and see your daily progress
 

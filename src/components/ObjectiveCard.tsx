@@ -1,4 +1,5 @@
 import { Objective } from '../types'
+import { DEFAULT_OBJECTIVE_COLOR, FREQUENCY_LABELS, OBJECTIVE_COLOR_OPTIONS } from '../constants/objectiveMeta'
 
 interface ObjectiveCardProps {
   objective: Objective
@@ -8,6 +9,8 @@ interface ObjectiveCardProps {
 }
 
 export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelete }: ObjectiveCardProps) => {
+  const selectedColor = OBJECTIVE_COLOR_OPTIONS.find((option) => option.value === objective.color) || OBJECTIVE_COLOR_OPTIONS.find((option) => option.value === DEFAULT_OBJECTIVE_COLOR)!
+
   const handleDelete = () => {
     if (window.confirm(`Delete "${objective.title}"?\n\nThis action cannot be undone.`)) {
       onDelete(objective.id)
@@ -16,10 +19,10 @@ export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelet
 
   return (
     <div
-      className={`p-5 sm:p-6 rounded-2xl shadow-lg transition-all duration-300 ${
+      className={`p-5 sm:p-6 rounded-2xl border-2 shadow-lg transition-all duration-300 ${selectedColor.cardClass} ${selectedColor.borderClass} ${
         isCompletedToday
-          ? 'bg-gradient-to-br from-green-300 to-emerald-400 scale-105'
-          : 'bg-gradient-to-br from-white to-purple-100 hover:shadow-xl'
+          ? 'opacity-80 scale-105'
+          : 'hover:shadow-xl'
       }`}
     >
       <div className="flex items-center gap-4">
@@ -49,9 +52,7 @@ export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelet
             </h3>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            {objective.frequency === 'weekly' && '📅 Weekly'}
-            {objective.frequency === 'monthly' && '📆 Monthly'}
-            {objective.frequency === 'yearly' && '🗓️ Yearly'}
+            {FREQUENCY_LABELS[objective.frequency]}
           </p>
         </div>
 
