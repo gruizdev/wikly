@@ -4,16 +4,17 @@ import { DEFAULT_OBJECTIVE_COLOR, FREQUENCY_LABELS, OBJECTIVE_COLOR_OPTIONS } fr
 interface ObjectiveCardProps {
   objective: Objective
   isCompletedToday: boolean
-  onComplete: (id: string) => void
-  onDelete: (id: string) => void
+  isPending?: boolean
+  onComplete: (id: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
-export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelete }: ObjectiveCardProps) => {
+export const ObjectiveCard = ({ objective, isCompletedToday, isPending = false, onComplete, onDelete }: ObjectiveCardProps) => {
   const selectedColor = OBJECTIVE_COLOR_OPTIONS.find((option) => option.value === objective.color) || OBJECTIVE_COLOR_OPTIONS.find((option) => option.value === DEFAULT_OBJECTIVE_COLOR)!
 
   const handleDelete = () => {
     if (window.confirm(`Delete "${objective.title}"?\n\nThis action cannot be undone.`)) {
-      onDelete(objective.id)
+      void onDelete(objective.id)
     }
   }
 
@@ -23,11 +24,12 @@ export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelet
         isCompletedToday
           ? 'opacity-80 scale-105'
           : 'hover:shadow-xl'
-      }`}
+      } ${isPending ? 'opacity-70 pointer-events-none' : ''}`}
     >
       <div className="flex items-center gap-4">
         <button
-          onClick={() => onComplete(objective.id)}
+          onClick={() => void onComplete(objective.id)}
+          disabled={isPending}
           className={`flex-shrink-0 w-10 h-10 rounded-full border-2 bg-white/90 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-purple-300 ${
             isCompletedToday
               ? 'bg-white border-green-600'
@@ -58,10 +60,11 @@ export const ObjectiveCard = ({ objective, isCompletedToday, onComplete, onDelet
 
         <button
           onClick={handleDelete}
+          disabled={isPending}
           className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-gray-200 bg-white text-gray-500 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors text-xl focus:outline-none focus:ring-2 focus:ring-red-200"
           aria-label="Delete objective"
         >
-          ×
+          {isPending ? '…' : '×'}
         </button>
       </div>
     </div>

@@ -1,12 +1,12 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useObjectives } from '../context/ObjectivesContext'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuth } from '../context/AuthContext'
 
 export const BottomNav = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { resetToMockData } = useObjectives()
+  const router = useRouter()
+  const pathname = usePathname()
+  const { signOut } = useAuth()
 
-  const isActive = (path: string) => location.pathname === path || location.hash === `#${path}`
+  const isActive = (path: string) => pathname === path
 
   const navItems = [
     { path: '/', label: 'Home', icon: '🏠' },
@@ -22,7 +22,7 @@ export const BottomNav = () => {
           {navItems.map((item) => (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => router.push(item.path)}
               className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-300 ${
                 isActive(item.path)
                   ? 'bg-gradient-to-br from-purple-500 to-accent-500 text-white scale-105 shadow-lg'
@@ -35,12 +35,12 @@ export const BottomNav = () => {
             </button>
           ))}
           <button
-            onClick={resetToMockData}
+            onClick={signOut}
             className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl text-gray-500 hover:bg-purple-50 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-purple-300"
-            aria-label="Reset to mock data"
+            aria-label="Sign out"
           >
-            <span className="text-2xl">🔄</span>
-            <span className="text-xs font-bold">Reset</span>
+            <span className="text-2xl">🚪</span>
+            <span className="text-xs font-bold">Sign out</span>
           </button>
         </div>
       </div>

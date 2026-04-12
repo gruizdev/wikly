@@ -1,211 +1,164 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Objective } from '../types'
-import { DEFAULT_OBJECTIVE_COLOR } from '../constants/objectiveMeta'
-
-const formatDate = (date: Date) => date.toISOString().split('T')[0]
-
-const daysAgo = (days: number) => {
-  const date = new Date()
-  date.setDate(date.getDate() - days)
-  return formatDate(date)
-}
-
-const getCurrentWeekMonday = () => {
-  const now = new Date()
-  const daysSinceMonday = (now.getDay() + 6) % 7
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - daysSinceMonday)
-  monday.setHours(0, 0, 0, 0)
-  return monday
-}
-
-const dateFromOffset = (base: Date, offset: number) => {
-  const date = new Date(base)
-  date.setDate(base.getDate() + offset)
-  return formatDate(date)
-}
-
-const currentMonthDate = (day: number) => {
-  const now = new Date()
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const safeDay = Math.max(1, Math.min(day, lastDay))
-  return formatDate(new Date(now.getFullYear(), now.getMonth(), safeDay))
-}
-
-const uniqueDates = (...dates: string[]) => [...new Set(dates)]
-
-const createMockObjectives = (): Objective[] => {
-  const weekStart = getCurrentWeekMonday()
-  const sharedWeekDate = dateFromOffset(weekStart, 1)
-  const sharedMonthDate = currentMonthDate(1)
-
-  return [
-    {
-      id: 'mock-1',
-      title: 'Morning workout',
-      icon: '💪',
-      frequency: 'daily',
-      color: 'green',
-      createdAt: new Date(),
-      completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(0), daysAgo(2), daysAgo(5)),
-    },
-    {
-      id: 'mock-2',
-      title: 'Read 20 pages',
-      icon: '📚',
-      frequency: 'weekly',
-      color: 'purple',
-      createdAt: new Date(),
-      completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(1), daysAgo(3)),
-    },
-    {
-      id: 'mock-3',
-      title: 'Practice guitar',
-      icon: '🎵',
-      frequency: 'weekly',
-      color: 'pink',
-      createdAt: new Date(),
-      completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(0)),
-    },
-    {
-      id: 'mock-4',
-      title: 'Build side-project feature',
-      icon: '💻',
-      frequency: 'monthly',
-      color: 'blue',
-      createdAt: new Date(),
-      completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(4), daysAgo(12)),
-    },
-    {
-      id: 'mock-5',
-      title: 'Weekend nature walk',
-      icon: '🌿',
-      frequency: 'monthly',
-      color: 'orange',
-      createdAt: new Date(),
-      completedDates: uniqueDates(sharedWeekDate, sharedMonthDate, daysAgo(6)),
-    },
-    {
-      id: 'mock-6',
-      title: 'Annual vision board',
-      icon: '🎯',
-      frequency: 'yearly',
-      color: 'yellow',
-      createdAt: new Date(),
-      completedDates: uniqueDates(sharedWeekDate, sharedMonthDate),
-    },
-  ]
-}
-
-const normalizeObjective = (objective: any): Objective => ({
-  ...objective,
-  icon: objective.icon || '📋',
-  color: objective.color || DEFAULT_OBJECTIVE_COLOR,
-  createdAt: objective.createdAt ? new Date(objective.createdAt) : new Date(),
-  completedDates: Array.isArray(objective.completedDates) ? objective.completedDates : [],
-})
+import { objectivesApi } from '../lib/objectivesApi'
+import { useAuth } from './AuthContext'
 
 interface ObjectivesContextType {
   objectives: Objective[]
-  addObjective: (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => void
-  editObjective: (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => void
-  completeObjectiveToday: (id: string) => void
-  reorderObjectives: (fromIndex: number, toIndex: number) => void
-  deleteObjective: (id: string) => void
-  resetToMockData: () => void
+  loading: boolean
+  isSaving: boolean
+  pendingObjectiveIds: string[]
+  error: string | null
+  addObjective: (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => Promise<void>
+  editObjective: (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => Promise<void>
+  completeObjectiveToday: (id: string) => Promise<void>
+  reorderObjectives: (fromIndex: number, toIndex: number) => Promise<void>
+  deleteObjective: (id: string) => Promise<void>
 }
 
 const ObjectivesContext = createContext<ObjectivesContextType | undefined>(undefined)
 
 export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) => {
+  const { session } = useAuth()
   const [objectives, setObjectives] = useState<Objective[]>([])
+  const [loading, setLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [pendingObjectiveIds, setPendingObjectiveIds] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('objectives')
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        setObjectives(Array.isArray(parsed) ? parsed.map(normalizeObjective) : [])
-      } catch {
-        console.error('Failed to parse objectives from localStorage')
-      }
-    } else {
-      setObjectives(createMockObjectives())
-    }
-  }, [])
-
-  // Save to localStorage whenever objectives change
-  useEffect(() => {
-    localStorage.setItem('objectives', JSON.stringify(objectives))
-  }, [objectives])
-
-  const addObjective = (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
-    const newObjective: Objective = {
-      ...objective,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      completedDates: [],
-    }
-    setObjectives([...objectives, newObjective])
+  const addPendingId = (id: string) => {
+    setPendingObjectiveIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
   }
 
-  const editObjective = (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
-    setObjectives((prev) =>
-      prev.map((obj) =>
-        obj.id === id
-          ? { ...obj, title: updates.title, icon: updates.icon, frequency: updates.frequency, color: updates.color }
-          : obj
+  const removePendingId = (id: string) => {
+    setPendingObjectiveIds((prev) => prev.filter((currentId) => currentId !== id))
+  }
+
+  // Load objectives from API whenever the user's session changes
+  useEffect(() => {
+    if (!session) {
+      setObjectives([])
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    objectivesApi
+      .list()
+      .then(setObjectives)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load objectives'))
+      .finally(() => setLoading(false))
+  }, [session])
+
+  const addObjective = async (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
+    setError(null)
+    setIsSaving(true)
+    try {
+      const created = await objectivesApi.create(objective)
+      setObjectives((prev) => [...prev, created])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create objective')
+      throw err
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const editObjective = async (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
+    setError(null)
+    setIsSaving(true)
+    addPendingId(id)
+    try {
+      const updated = await objectivesApi.update(id, updates)
+      setObjectives((prev) => prev.map((obj) => (obj.id === id ? updated : obj)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update objective')
+      throw err
+    } finally {
+      removePendingId(id)
+      setIsSaving(false)
+    }
+  }
+
+  const reorderObjectives = async (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= objectives.length ||
+      toIndex >= objectives.length
+    ) {
+      return
+    }
+
+    // Optimistically update UI
+    const reordered = [...objectives]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    setObjectives(reordered)
+
+    setError(null)
+    setIsSaving(true)
+    try {
+      // Persist new positions
+      await Promise.all(
+        reordered.map((obj, index) => objectivesApi.update(obj.id, { position: index }))
       )
-    )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reorder objectives')
+      throw err
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const reorderObjectives = (fromIndex: number, toIndex: number) => {
-    setObjectives((prev) => {
-      if (
-        fromIndex === toIndex ||
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= prev.length ||
-        toIndex >= prev.length
-      ) {
-        return prev
-      }
-
-      const reordered = [...prev]
-      const [movedObjective] = reordered.splice(fromIndex, 1)
-      reordered.splice(toIndex, 0, movedObjective)
-      return reordered
-    })
+  const completeObjectiveToday = async (id: string) => {
+    setError(null)
+    setIsSaving(true)
+    addPendingId(id)
+    try {
+      const updated = await objectivesApi.toggleComplete(id)
+      setObjectives((prev) => prev.map((obj) => (obj.id === id ? updated : obj)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update completion status')
+      throw err
+    } finally {
+      removePendingId(id)
+      setIsSaving(false)
+    }
   }
 
-  const completeObjectiveToday = (id: string) => {
-    setObjectives((prev) =>
-      prev.map((obj) => {
-        if (obj.id === id) {
-          const today = new Date().toISOString().split('T')[0]
-          return {
-            ...obj,
-            completedDates: obj.completedDates.includes(today)
-              ? obj.completedDates.filter((d) => d !== today)
-              : [...obj.completedDates, today],
-          }
-        }
-        return obj
-      })
-    )
-  }
-
-  const deleteObjective = (id: string) => {
-    setObjectives((prev) => prev.filter((obj) => obj.id !== id))
-  }
-
-  const resetToMockData = () => {
-    setObjectives(createMockObjectives())
+  const deleteObjective = async (id: string) => {
+    setError(null)
+    setIsSaving(true)
+    addPendingId(id)
+    try {
+      await objectivesApi.delete(id)
+      setObjectives((prev) => prev.filter((obj) => obj.id !== id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete objective')
+      throw err
+    } finally {
+      removePendingId(id)
+      setIsSaving(false)
+    }
   }
 
   return (
-    <ObjectivesContext.Provider value={{ objectives, addObjective, editObjective, completeObjectiveToday, reorderObjectives, deleteObjective, resetToMockData }}>
+    <ObjectivesContext.Provider
+      value={{
+        objectives,
+        loading,
+        isSaving,
+        pendingObjectiveIds,
+        error,
+        addObjective,
+        editObjective,
+        completeObjectiveToday,
+        reorderObjectives,
+        deleteObjective,
+      }}
+    >
       {children}
     </ObjectivesContext.Provider>
   )
