@@ -1,9 +1,0 @@
-{
-  "/api/objectives/route": "app/api/objectives/route.js",
-  "/api/objectives/[id]/complete/route": "app/api/objectives/[id]/complete/route.js",
-  "/login/page": "app/login/page.js",
-  "/page": "app/page.js",
-  "/create/page": "app/create/page.js",
-  "/manage/page": "app/manage/page.js",
-  "/calendar/page": "app/calendar/page.js"
-}
