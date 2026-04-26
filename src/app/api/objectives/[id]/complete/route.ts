@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin, getUserIdFromRequest } from '@/lib/supabaseAdmin'
 
+type ObjectiveRow = Record<string, unknown> & {
+  completion_events?: Array<{ completed_on: string }>
+  objective_tags?: Array<{ tag: { id: string; name: string } | Array<{ id: string; name: string }> | null }>
+}
+
+const objectiveSelect = '*, completion_events(completed_on), objective_tags(tag:tags(id,name))'
+
+function mapObjectiveRow(row: ObjectiveRow) {
+  const { completion_events = [], objective_tags = [], ...obj } = row
+
+  const tags = objective_tags.flatMap((join) => {
+    if (!join?.tag) return []
+    if (Array.isArray(join.tag)) return join.tag
+    return [join.tag]
+  })
+
+  return {
+    ...obj,
+    completed_dates: completion_events.map((event) => event.completed_on),
+    tags,
+  }
+}
+
 // POST /api/objectives/[id]/complete — toggle completion for today
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getUserIdFromRequest(req)
@@ -49,14 +72,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Return the objective with the updated list of completion dates
   const { data, error } = await supabaseAdmin
     .from('objectives')
-    .select('*, completion_events(completed_on)')
+    .select(objectiveSelect)
     .eq('id', id)
     .eq('user_id', userId)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  type Row = Record<string, unknown> & { completion_events: Array<{ completed_on: string }> }
-  const { completion_events, ...rest } = data as Row
-  return NextResponse.json({ ...rest, completed_dates: completion_events.map((e) => e.completed_on) })
+  return NextResponse.json(mapObjectiveRow(data as ObjectiveRow))
 }

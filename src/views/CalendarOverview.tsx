@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useObjectives } from '../context/ObjectivesContext'
 import { BottomNav } from '../components/BottomNav'
 
@@ -13,12 +13,20 @@ const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 const toDate = (dateString: string) => new Date(`${dateString}T00:00:00`)
 
 export default function CalendarOverview() {
-  const { objectives } = useObjectives()
+  const { objectives, tags } = useObjectives()
+  const [selectedTagId, setSelectedTagId] = useState<string>('all')
   const currentYear = new Date().getFullYear()
+
+  const filteredObjectives = useMemo(
+    () => (selectedTagId === 'all'
+      ? objectives
+      : objectives.filter((objective) => objective.tags.some((tag) => tag.id === selectedTagId))),
+    [objectives, selectedTagId]
+  )
 
   const monthlyProgress = useMemo<PeriodProgress[]>(() => {
     return monthNames.map((month, monthIndex) => {
-      const completedCount = objectives.filter((objective) =>
+      const completedCount = filteredObjectives.filter((objective) =>
         objective.completedDates.some((dateString) => {
           const completedDate = toDate(dateString)
           return (
@@ -28,8 +36,8 @@ export default function CalendarOverview() {
         })
       ).length
 
-      const percentage = objectives.length > 0
-        ? Math.round((completedCount / objectives.length) * 100)
+      const percentage = filteredObjectives.length > 0
+        ? Math.round((completedCount / filteredObjectives.length) * 100)
         : 0
 
       return {
@@ -38,7 +46,7 @@ export default function CalendarOverview() {
         percentage,
       }
     })
-  }, [objectives, currentYear])
+  }, [filteredObjectives, currentYear])
 
   const weeklyProgress = useMemo<PeriodProgress[]>(() => {
     const yearStart = new Date(currentYear, 0, 1)
@@ -59,7 +67,7 @@ export default function CalendarOverview() {
       weekEnd.setDate(weekEnd.getDate() + 6)
       weekEnd.setHours(23, 59, 59, 999)
 
-      const completedCount = objectives.filter((objective) =>
+      const completedCount = filteredObjectives.filter((objective) =>
         objective.completedDates.some((dateString) => {
           const completedDate = toDate(dateString)
           return (
@@ -70,8 +78,8 @@ export default function CalendarOverview() {
         })
       ).length
 
-      const percentage = objectives.length > 0
-        ? Math.round((completedCount / objectives.length) * 100)
+      const percentage = filteredObjectives.length > 0
+        ? Math.round((completedCount / filteredObjectives.length) * 100)
         : 0
 
       weeks.push({
@@ -85,7 +93,7 @@ export default function CalendarOverview() {
     }
 
     return weeks
-  }, [objectives, currentYear])
+  }, [filteredObjectives, currentYear])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 px-4 py-5 sm:px-6 sm:py-8 md:px-8 pb-32">
@@ -98,10 +106,45 @@ export default function CalendarOverview() {
         </div>
 
         <section className="bg-white rounded-3xl shadow-xl p-5 sm:p-6 md:p-8">
+          <h2 className="text-xl sm:text-2xl font-black text-gray-800 mb-4">Filter By Tag</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedTagId('all')}
+              className={`px-3 py-1.5 rounded-full border-2 text-sm font-semibold transition-colors ${
+                selectedTagId === 'all'
+                  ? 'bg-purple-600 border-purple-600 text-white'
+                  : 'bg-white border-purple-200 text-purple-700 hover:border-purple-500'
+              }`}
+            >
+              All Tasks
+            </button>
+
+            {tags.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => setSelectedTagId(tag.id)}
+                className={`px-3 py-1.5 rounded-full border-2 text-sm font-semibold transition-colors ${
+                  selectedTagId === tag.id
+                    ? 'bg-purple-600 border-purple-600 text-white'
+                    : 'bg-white border-purple-200 text-purple-700 hover:border-purple-500'
+                }`}
+              >
+                #{tag.name}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-3">
+            Showing {filteredObjectives.length} {filteredObjectives.length === 1 ? 'task' : 'tasks'}.
+          </p>
+        </section>
+
+        <section className="bg-white rounded-3xl shadow-xl p-5 sm:p-6 md:p-8">
           <h2 className="text-xl sm:text-2xl font-black text-gray-800 mb-5">Monthly Completion</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {monthlyProgress.map((month) => {
-              const isCompleted = objectives.length > 0 && month.completedCount === objectives.length
+              const isCompleted = filteredObjectives.length > 0 && month.completedCount === filteredObjectives.length
               return (
                 <div
                   key={month.label}
@@ -125,7 +168,7 @@ export default function CalendarOverview() {
           <h2 className="text-xl sm:text-2xl font-black text-gray-800 mb-5">Weekly Completion</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-h-[560px] overflow-y-auto pr-1">
             {weeklyProgress.map((week) => {
-              const isCompleted = objectives.length > 0 && week.completedCount === objectives.length
+              const isCompleted = filteredObjectives.length > 0 && week.completedCount === filteredObjectives.length
               return (
                 <div
                   key={week.label}

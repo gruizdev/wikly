@@ -1,16 +1,26 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { Objective } from '../types'
+import { Objective, Tag } from '../types'
 import { objectivesApi } from '../lib/objectivesApi'
 import { useAuth } from './AuthContext'
 
+type ObjectiveInput = Omit<Objective, 'id' | 'createdAt' | 'completedDates' | 'tags'> & {
+  tagIds?: string[]
+}
+
+type ObjectiveUpdates = Partial<Omit<Objective, 'id' | 'createdAt' | 'completedDates' | 'tags'>> & {
+  tagIds?: string[]
+}
+
 interface ObjectivesContextType {
   objectives: Objective[]
+  tags: Tag[]
   loading: boolean
   isSaving: boolean
   pendingObjectiveIds: string[]
   error: string | null
-  addObjective: (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => Promise<void>
-  editObjective: (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => Promise<void>
+  addObjective: (objective: ObjectiveInput) => Promise<void>
+  editObjective: (id: string, updates: ObjectiveUpdates) => Promise<void>
+  createTag: (name: string) => Promise<Tag>
   completeObjectiveToday: (id: string) => Promise<void>
   reorderObjectives: (fromIndex: number, toIndex: number) => Promise<void>
   deleteObjective: (id: string) => Promise<void>
@@ -21,6 +31,7 @@ const ObjectivesContext = createContext<ObjectivesContextType | undefined>(undef
 export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) => {
   const { session } = useAuth()
   const [objectives, setObjectives] = useState<Objective[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingObjectiveIds, setPendingObjectiveIds] = useState<string[]>([])
@@ -38,19 +49,22 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (!session) {
       setObjectives([])
+      setTags([])
       return
     }
 
     setLoading(true)
     setError(null)
-    objectivesApi
-      .list()
-      .then(setObjectives)
+    Promise.all([objectivesApi.list(), objectivesApi.listTags()])
+      .then(([loadedObjectives, loadedTags]) => {
+        setObjectives(loadedObjectives)
+        setTags(loadedTags)
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load objectives'))
       .finally(() => setLoading(false))
   }, [session])
 
-  const addObjective = async (objective: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
+  const addObjective = async (objective: ObjectiveInput) => {
     setError(null)
     setIsSaving(true)
     try {
@@ -64,7 +78,7 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
     }
   }
 
-  const editObjective = async (id: string, updates: Omit<Objective, 'id' | 'createdAt' | 'completedDates'>) => {
+  const editObjective = async (id: string, updates: ObjectiveUpdates) => {
     setError(null)
     setIsSaving(true)
     addPendingId(id)
@@ -144,16 +158,28 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
     }
   }
 
+  const createTag = async (name: string) => {
+    setError(null)
+    const created = await objectivesApi.createTag(name)
+    setTags((prev) => {
+      if (prev.some((tag) => tag.id === created.id)) return prev
+      return [...prev, created]
+    })
+    return created
+  }
+
   return (
     <ObjectivesContext.Provider
       value={{
         objectives,
+        tags,
         loading,
         isSaving,
         pendingObjectiveIds,
         error,
         addObjective,
         editObjective,
+        createTag,
         completeObjectiveToday,
         reorderObjectives,
         deleteObjective,

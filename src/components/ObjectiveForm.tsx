@@ -10,12 +10,39 @@ export const ObjectiveForm = () => {
   const [selectedIcon, setSelectedIcon] = useState('📚')
   const [frequency, setFrequency] = useState<FrequencyType>('weekly')
   const [color, setColor] = useState(DEFAULT_OBJECTIVE_COLOR)
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const [newTagName, setNewTagName] = useState('')
+  const [tagError, setTagError] = useState<string | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const { addObjective, isSaving, error } = useObjectives()
+  const { addObjective, tags, createTag, isSaving, error } = useObjectives()
   const router = useRouter()
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  const toggleTagSelection = (tagId: string) => {
+    setSelectedTagIds((current) => (
+      current.includes(tagId)
+        ? current.filter((id) => id !== tagId)
+        : [...current, tagId]
+    ))
+  }
+
+  const handleCreateTag = async () => {
+    const normalized = newTagName.trim()
+    if (!normalized) return
+
+    setTagError(null)
+    try {
+      const created = await createTag(normalized)
+      setSelectedTagIds((current) => (
+        current.includes(created.id) ? current : [...current, created.id]
+      ))
+      setNewTagName('')
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : 'Failed to create tag')
+    }
+  }
 
   // Close icon picker when clicking outside
   useEffect(() => {
@@ -42,6 +69,7 @@ export const ObjectiveForm = () => {
           icon: selectedIcon,
           frequency,
           color,
+          tagIds: selectedTagIds,
         })
         router.push('/')
       } catch (err) {
@@ -140,6 +168,58 @@ export const ObjectiveForm = () => {
             />
           ))}
         </div>
+      </div>
+
+      {/* Tag Selector */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-3">
+          Tags
+        </label>
+        {tags.length === 0 ? (
+          <p className="text-sm text-gray-600 mb-3">No tags yet. Create your first one below.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {tags.map((tag) => {
+              const isSelected = selectedTagIds.includes(tag.id)
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTagSelection(tag.id)}
+                  disabled={submitting || isSaving}
+                  className={`px-3 py-1.5 rounded-full border-2 text-sm font-semibold transition-colors ${
+                    isSelected
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'bg-white border-purple-200 text-purple-700 hover:border-purple-500'
+                  }`}
+                >
+                  #{tag.name}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)}
+            placeholder="Create a tag (e.g., health)"
+            disabled={submitting || isSaving}
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-purple-300 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-200"
+          />
+          <button
+            type="button"
+            onClick={() => void handleCreateTag()}
+            disabled={!newTagName.trim() || submitting || isSaving}
+            className="px-5 py-3 rounded-xl border-2 border-purple-500 text-purple-700 font-bold bg-white hover:bg-purple-50 transition-colors disabled:opacity-50"
+          >
+            Add Tag
+          </button>
+        </div>
+
+        {tagError && <p className="mt-2 text-sm text-red-600 font-medium">{tagError}</p>}
       </div>
 
       {/* Submit Buttons */}

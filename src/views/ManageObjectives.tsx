@@ -6,14 +6,16 @@ import { DEFAULT_OBJECTIVE_COLOR, FREQUENCY_LABELS, FREQUENCY_OPTIONS, OBJECTIVE
 import { EmojiPickerModal } from '../components/EmojiPickerModal'
 
 export default function ManageObjectives() {
-  const { objectives, loading, isSaving, pendingObjectiveIds, error, editObjective, deleteObjective } = useObjectives()
+  const { objectives, tags, loading, isSaving, pendingObjectiveIds, error, editObjective, deleteObjective, createTag } = useObjectives()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<{
     title: string
     icon: string
     frequency: FrequencyType
     color: Objective['color']
-  }>({ title: '', icon: '📚', frequency: 'weekly', color: DEFAULT_OBJECTIVE_COLOR })
+    tagIds: string[]
+  }>({ title: '', icon: '📚', frequency: 'weekly', color: DEFAULT_OBJECTIVE_COLOR, tagIds: [] })
+  const [newTagName, setNewTagName] = useState('')
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -24,7 +26,9 @@ export default function ManageObjectives() {
       icon: objective.icon || '📚',
       frequency: objective.frequency,
       color: objective.color || DEFAULT_OBJECTIVE_COLOR,
+      tagIds: objective.tags.map((tag) => tag.id),
     })
+    setNewTagName('')
     setShowIconPicker(false)
   }
 
@@ -42,7 +46,36 @@ export default function ManageObjectives() {
 
   const handleCancelEdit = () => {
     setEditingId(null)
+    setNewTagName('')
     setShowIconPicker(false)
+  }
+
+  const toggleTagSelection = (tagId: string) => {
+    setEditForm((current) => ({
+      ...current,
+      tagIds: current.tagIds.includes(tagId)
+        ? current.tagIds.filter((id) => id !== tagId)
+        : [...current.tagIds, tagId],
+    }))
+  }
+
+  const handleCreateTag = async () => {
+    const normalized = newTagName.trim()
+    if (!normalized) return
+
+    setSaveError(null)
+    try {
+      const created = await createTag(normalized)
+      setEditForm((current) => ({
+        ...current,
+        tagIds: current.tagIds.includes(created.id)
+          ? current.tagIds
+          : [...current.tagIds, created.id],
+      }))
+      setNewTagName('')
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to create tag')
+    }
   }
 
   const handleDelete = async (objective: Objective) => {
@@ -180,6 +213,55 @@ export default function ManageObjectives() {
                       </div>
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Tags
+                      </label>
+                      {tags.length === 0 ? (
+                        <p className="text-sm text-gray-600 mb-3">No tags yet. Create your first one.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {tags.map((tag) => {
+                            const isSelected = editForm.tagIds.includes(tag.id)
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={() => toggleTagSelection(tag.id)}
+                                disabled={isSaving || isPending}
+                                className={`px-3 py-1.5 rounded-full border-2 text-sm font-semibold transition-colors ${
+                                  isSelected
+                                    ? 'bg-purple-600 border-purple-600 text-white'
+                                    : 'bg-white border-purple-200 text-purple-700 hover:border-purple-500'
+                                }`}
+                              >
+                                #{tag.name}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="text"
+                          value={newTagName}
+                          onChange={(e) => setNewTagName(e.target.value)}
+                          placeholder="Create a tag"
+                          disabled={isSaving || isPending}
+                          className="flex-1 px-4 py-3 rounded-xl border-2 border-purple-300 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateTag()}
+                          disabled={!newTagName.trim() || isSaving || isPending}
+                          className="px-5 py-3 rounded-xl border-2 border-purple-500 text-purple-700 font-bold bg-white hover:bg-purple-50 transition-colors disabled:opacity-50"
+                        >
+                          Add Tag
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="flex gap-3 pt-3">
                       <button
                         onClick={handleSaveEdit}
@@ -205,6 +287,18 @@ export default function ManageObjectives() {
                       <p className="text-xs text-gray-600 mt-1">
                         {FREQUENCY_LABELS[objective.frequency]}
                       </p>
+                      {objective.tags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {objective.tags.map((tag) => (
+                            <span
+                              key={tag.id}
+                              className="px-2 py-0.5 rounded-full bg-white/90 border border-purple-200 text-xs font-semibold text-purple-700"
+                            >
+                              #{tag.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <button

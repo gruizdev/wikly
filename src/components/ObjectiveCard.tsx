@@ -56,6 +56,18 @@ export const ObjectiveCard = ({ objective, isCompletedToday, isPending = false, 
           <p className="text-xs text-gray-600 mt-2">
             {FREQUENCY_LABELS[objective.frequency]}
           </p>
+          {objective.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {objective.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="px-2 py-0.5 rounded-full bg-white/90 border border-purple-200 text-xs font-semibold text-purple-700"
+                >
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <button
