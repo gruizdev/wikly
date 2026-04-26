@@ -6,7 +6,7 @@ import { DEFAULT_OBJECTIVE_COLOR, FREQUENCY_LABELS, FREQUENCY_OPTIONS, OBJECTIVE
 import { EmojiPickerModal } from '../components/EmojiPickerModal'
 
 export default function ManageObjectives() {
-  const { objectives, tags, loading, isSaving, pendingObjectiveIds, error, editObjective, deleteObjective, createTag } = useObjectives()
+  const { objectives, tags, loading, isSaving, pendingObjectiveIds, error, editObjective, deleteObjective, createTag, deleteTag } = useObjectives()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<{
     title: string
@@ -17,6 +17,7 @@ export default function ManageObjectives() {
   }>({ title: '', icon: '📚', frequency: 'weekly', color: DEFAULT_OBJECTIVE_COLOR, tagIds: [] })
   const [newTagName, setNewTagName] = useState('')
   const [showIconPicker, setShowIconPicker] = useState(false)
+  const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const handleStartEdit = (objective: Objective) => {
@@ -92,6 +93,28 @@ export default function ManageObjectives() {
     }
   }
 
+  const handleDeleteTag = async (tagId: string, tagName: string) => {
+    if (!window.confirm(`Delete tag "#${tagName}"?\n\nIt will be removed from all objectives.`)) {
+      return
+    }
+
+    setSaveError(null)
+    setDeletingTagId(tagId)
+    try {
+      await deleteTag(tagId)
+      if (editingId) {
+        setEditForm((current) => ({
+          ...current,
+          tagIds: current.tagIds.filter((id) => id !== tagId),
+        }))
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to delete tag')
+    } finally {
+      setDeletingTagId(null)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 px-4 py-5 sm:px-6 sm:py-8 md:px-8 pb-32">
       <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl space-y-6 mb-8">
@@ -100,6 +123,41 @@ export default function ManageObjectives() {
           <p className="text-sm sm:text-base font-semibold text-white/95">
             Edit or delete your objectives
           </p>
+        </div>
+
+        <div className="bg-white/90 rounded-3xl border-2 border-purple-100 shadow-xl p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">Tags</h2>
+            <p className="text-xs text-gray-500">{tags.length} total</p>
+          </div>
+
+          {tags.length === 0 ? (
+            <p className="text-sm text-gray-600">No tags created yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => {
+                const isDeleting = deletingTagId === tag.id
+                return (
+                  <div
+                    key={tag.id}
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-purple-200 bg-purple-50 px-3 py-1.5"
+                  >
+                    <span className="text-sm font-semibold text-purple-800">#{tag.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteTag(tag.id, tag.name)}
+                      disabled={isDeleting || isSaving}
+                      className="h-5 w-5 rounded-full border border-red-200 bg-white text-red-600 text-xs font-bold leading-none hover:bg-red-50 disabled:opacity-50"
+                      aria-label={`Delete tag ${tag.name}`}
+                      title={`Delete #${tag.name}`}
+                    >
+                      {isDeleting ? '…' : '×'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">

@@ -2,9 +2,41 @@ import { useEffect, useMemo, useState } from 'react'
 import { useObjectives } from '../context/ObjectivesContext'
 import { ObjectiveCard } from './ObjectiveCard'
 
+const dateInCurrentPeriod = (dateString: string, frequency: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
+  const date = new Date(`${dateString}T00:00:00`)
+  const now = new Date()
+
+  if (Number.isNaN(date.getTime())) return false
+
+  if (frequency === 'daily') {
+    return date.toDateString() === now.toDateString()
+  }
+
+  if (frequency === 'weekly') {
+    const startOfWeek = new Date(now)
+    const day = startOfWeek.getDay()
+    const diffToMonday = day === 0 ? 6 : day - 1
+    startOfWeek.setDate(startOfWeek.getDate() - diffToMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 7)
+
+    return date >= startOfWeek && date < endOfWeek
+  }
+
+  if (frequency === 'monthly') {
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
+  }
+
+  return date.getFullYear() === now.getFullYear()
+}
+
+const isCompletableNow = (objective: { frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'; completedDates: string[] }) =>
+  !objective.completedDates.some((date) => dateInCurrentPeriod(date, objective.frequency))
+
 export const ObjectiveList = () => {
   const { objectives, tags, loading, isSaving, error, pendingObjectiveIds, completeObjectiveToday, deleteObjective, reorderObjectives } = useObjectives()
-  const today = new Date().toISOString().split('T')[0]
   const [selectedTagId, setSelectedTagId] = useState<string>('all')
   const [draggedObjectiveId, setDraggedObjectiveId] = useState<string | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -21,6 +53,11 @@ export const ObjectiveList = () => {
       ? objectives
       : objectives.filter((objective) => objective.tags.some((tag) => tag.id === selectedTagId))),
     [objectives, selectedTagId]
+  )
+
+  const prioritizedObjectives = useMemo(
+    () => [...visibleObjectives].sort((a, b) => Number(isCompletableNow(b)) - Number(isCompletableNow(a))),
+    [visibleObjectives]
   )
 
   const renderTagFilters = objectives.length > 0 && tags.length > 0
@@ -157,7 +194,7 @@ export const ObjectiveList = () => {
           </div>
         </div>
       )}
-      {visibleObjectives.map((objective, index) => (
+      {prioritizedObjectives.map((objective, index) => (
         <div
           key={objective.id}
           draggable={!isSaving}
@@ -187,7 +224,7 @@ export const ObjectiveList = () => {
         >
           <ObjectiveCard
             objective={objective}
-            isCompletedToday={objective.completedDates.includes(today)}
+            isCompletedToday={!isCompletableNow(objective)}
             isPending={pendingObjectiveIds.includes(objective.id)}
             onComplete={completeObjectiveToday}
             onDelete={deleteObjective}

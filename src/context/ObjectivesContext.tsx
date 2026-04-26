@@ -21,6 +21,7 @@ interface ObjectivesContextType {
   addObjective: (objective: ObjectiveInput) => Promise<void>
   editObjective: (id: string, updates: ObjectiveUpdates) => Promise<void>
   createTag: (name: string) => Promise<Tag>
+  deleteTag: (id: string) => Promise<void>
   completeObjectiveToday: (id: string) => Promise<void>
   reorderObjectives: (fromIndex: number, toIndex: number) => Promise<void>
   deleteObjective: (id: string) => Promise<void>
@@ -168,6 +169,16 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
     return created
   }
 
+  const deleteTag = async (id: string) => {
+    setError(null)
+    await objectivesApi.deleteTag(id)
+    setTags((prev) => prev.filter((tag) => tag.id !== id))
+    setObjectives((prev) => prev.map((objective) => ({
+      ...objective,
+      tags: objective.tags.filter((tag) => tag.id !== id),
+    })))
+  }
+
   return (
     <ObjectivesContext.Provider
       value={{
@@ -180,6 +191,7 @@ export const ObjectivesProvider = ({ children }: { children: React.ReactNode }) 
         addObjective,
         editObjective,
         createTag,
+        deleteTag,
         completeObjectiveToday,
         reorderObjectives,
         deleteObjective,

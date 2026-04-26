@@ -132,4 +132,13 @@ export const objectivesApi = {
     })
     return handleResponse<Tag>(res)
   },
+
+  async deleteTag(id: string): Promise<void> {
+    const headers = await authHeaders()
+    const res = await fetch(`${apiUrl}/tags/${id}`, {
+      method: 'DELETE',
+      headers,
+    })
+    await handleResponse<void>(res)
+  },
 }
